@@ -1,20 +1,569 @@
-<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Painel Andrade Store</title><style>
-*{box-sizing:border-box}body{margin:0;background:#f5f5f5;font-family:Arial}.wrap{max-width:1050px;margin:auto;padding:22px}.box{background:#fff;border:1px solid #ddd;border-radius:12px;padding:20px;margin-bottom:18px}.form{display:grid;gap:10px}.form input,.form textarea,.form select{padding:12px;border:1px solid #ccc;border-radius:8px;font:inherit}.btn{padding:12px 16px;border:0;border-radius:8px;font-weight:800;cursor:pointer}.black{background:#111;color:#fff}.red{background:#e11;color:#fff}.hidden{display:none}.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:14px}.prod{background:#fff;border:1px solid #ddd;border-radius:10px;overflow:hidden}.prod img{width:100%;aspect-ratio:4/5;object-fit:cover}.pi{padding:12px}.actions{display:flex;gap:7px;margin-top:10px}.actions button{flex:1}.thumbs{display:flex;gap:8px;flex-wrap:wrap}.thumb{position:relative}.thumb img{width:80px;height:100px;object-fit:cover;border-radius:7px}.thumb button{position:absolute;right:0;top:0;border:0;border-radius:50%;background:#e11;color:#fff}.login{max-width:400px;margin:12vh auto}</style></head><body><div class="wrap">
-<div id="login" class="box login"><h1>Andrade Store</h1><p>Entrar no painel</p><div class="form"><input id="email" type="email" placeholder="E-mail"><input id="password" type="password" placeholder="Senha"><button class="btn black" onclick="login()">Entrar</button><div id="msg"></div></div></div>
-<div id="app" class="hidden"><div style="display:flex;justify-content:space-between;align-items:center"><h1>Andrade Store — Painel</h1><div><a class="btn" href="index.html">Site</a><button class="btn black" onclick="logout()">Sair</button></div></div>
-<div class="box"><h2>Nova categoria</h2><div class="form"><input id="cn" placeholder="Ex.: Calças"><button class="btn black" onclick="addCat()">Adicionar</button></div><p id="catlist"></p></div>
-<div class="box"><h2 id="title">Adicionar produto</h2><div class="form"><input id="name" placeholder="Nome"><input id="price" placeholder="Preço"><select id="cat"></select><textarea id="desc" placeholder="Descrição"></textarea><input id="sizes" placeholder="Tamanhos: P,M,G,GG"><input id="files" type="file" accept="image/*" multiple><div id="thumbs" class="thumbs"></div><button class="btn red" onclick="save()">Salvar produto</button><button id="cancel" class="btn" onclick="reset()" style="display:none">Cancelar</button></div></div>
-<div class="box"><h2>Produtos</h2><div id="list" class="grid"></div></div></div></div>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script src="config.js"></script><script>
-const db=supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY);let cats=[],products=[],edit=null,old=[];
-async function boot(){let s=(await db.auth.getSession()).data.session;if(s)show();}function show(){login.classList.add('hidden');app.classList.remove('hidden');load()}async function login(){let r=await db.auth.signInWithPassword({email:email.value,password:password.value});if(r.error)msg.textContent=r.error.message;else show()}async function logout(){await db.auth.signOut();location.reload()}
-async function load(){cats=(await db.from('categories').select('*').order('sort_order')).data||[];products=(await db.from('products').select('*').order('created_at',{ascending:false})).data||[];cat.innerHTML=cats.map(c=>'<option value="'+c.id+'">'+esc(c.name)+'</option>').join('');catlist.innerHTML=cats.map(c=>'<span style="display:inline-block;padding:7px;background:#eee;margin:3px;border-radius:6px">'+esc(c.name)+'</span>').join('');list.innerHTML=products.map(p=>'<div class="prod"><img src="'+esc((p.images||[])[0]||'')+'"><div class="pi"><b>'+esc(p.name)+'</b><br>'+esc(p.price||'')+'<div class="actions"><button class="btn" onclick="editP(\''+p.id+'\')">Editar</button><button class="btn black" onclick="del(\''+p.id+'\')">Excluir</button></div></div></div>').join('')||'<p>Nenhum produto.</p>'}
-async function addCat(){if(!cn.value.trim())return;await db.from('categories').insert({name:cn.value.trim(),sort_order:cats.length+1});cn.value='';load()}
-async function save(){if(!name.value.trim()||!cat.value)return alert('Preencha nome e categoria.');let imgs=[...old];for(let f of files.files){let path=Date.now()+'-'+Math.random().toString(36).slice(2)+'-'+f.name;let u=await db.storage.from('product-images').upload(path,f);if(u.error)return alert(u.error.message);imgs.push(db.storage.from('product-images').getPublicUrl(path).data.publicUrl)}let obj={name:name.value.trim(),price:price.value.trim(),category_id:cat.value,description:desc.value.trim(),sizes:sizes.value.split(',').map(x=>x.trim()).filter(Boolean),images:imgs,active:true};if(edit)await db.from('products').update(obj).eq('id',edit);else await db.from('products').insert(obj);reset();load()}
-function editP(id){let p=products.find(x=>x.id===id);edit=id;old=[...(p.images||[])];name.value=p.name;price.value=p.price||'';cat.value=p.category_id;desc.value=p.description||'';sizes.value=(p.sizes||[]).join(',');title.textContent='Editar produto';cancel.style.display='inline-block';showThumbs()}
-async function del(id){if(confirm('Excluir produto?')){await db.from('products').delete().eq('id',id);load()}}
-function showThumbs(){thumbs.innerHTML=old.map((x,i)=>'<div class="thumb"><img src="'+esc(x)+'"><button onclick="old.splice('+i+',1);showThumbs()">×</button></div>').join('')}
-files.onchange=()=>{thumbs.innerHTML=[...files.files].map(f=>'<div class="thumb"><img src="'+URL.createObjectURL(f)+'"></div>').join('')+old.map(x=>'<div class="thumb"><img src="'+esc(x)+'"></div>').join('')}
-function reset(){edit=null;old=[];name.value='';price.value='';desc.value='';sizes.value='';files.value='';title.textContent='Adicionar produto';cancel.style.display='none';thumbs.innerHTML=''}
-function esc(s){return String(s||'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]))}boot();
-</script></body></html>
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Painel Andrade Store</title>
+
+<style>
+*{box-sizing:border-box}
+body{margin:0;background:#f5f5f5;font-family:Arial}
+.wrap{max-width:1050px;margin:auto;padding:22px}
+.box{background:#fff;border:1px solid #ddd;border-radius:12px;padding:20px;margin-bottom:18px}
+.form{display:grid;gap:10px}
+.form input,.form textarea,.form select{padding:12px;border:1px solid #ccc;border-radius:8px;font:inherit}
+.btn{padding:12px 16px;border:0;border-radius:8px;font-weight:800;cursor:pointer}
+.black{background:#111;color:#fff}
+.red{background:#e11;color:#fff}
+.hidden{display:none}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:14px}
+.prod{background:#fff;border:1px solid #ddd;border-radius:10px;overflow:hidden}
+.prod img{width:100%;aspect-ratio:4/5;object-fit:cover}
+.pi{padding:12px}
+.actions{display:flex;gap:7px;margin-top:10px}
+.actions button{flex:1}
+.thumbs{display:flex;gap:8px;flex-wrap:wrap}
+.thumb{position:relative}
+.thumb img{width:80px;height:100px;object-fit:cover;border-radius:7px}
+.thumb button{position:absolute;right:0;top:0;border:0;border-radius:50%;background:#e11;color:#fff}
+.login{max-width:400px;margin:12vh auto}
+</style>
+</head>
+
+<body>
+
+<div class="wrap">
+
+<div id="login" class="box login">
+<h1>Andrade Store</h1>
+<p>Entrar no painel</p>
+
+<div class="form">
+<input id="email" type="email" placeholder="E-mail">
+<input id="password" type="password" placeholder="Senha">
+
+<button class="btn black" onclick="doLogin()">Entrar</button>
+
+<div id="msg"></div>
+</div>
+</div>
+
+
+<div id="app" class="hidden">
+
+<div style="display:flex;justify-content:space-between;align-items:center">
+<h1>Andrade Store — Painel</h1>
+
+<div>
+<a class="btn" href="index.html">Site</a>
+<button class="btn black" onclick="logout()">Sair</button>
+</div>
+</div>
+
+
+<div class="box">
+
+<h2>Nova categoria</h2>
+
+<div class="form">
+<input id="cn" placeholder="Ex.: Calças">
+<button class="btn black" onclick="addCat()">Adicionar</button>
+</div>
+
+<p id="catlist"></p>
+
+</div>
+
+
+<div class="box">
+
+<h2 id="title">Adicionar produto</h2>
+
+<div class="form">
+
+<input id="name" placeholder="Nome">
+
+<input id="price" placeholder="Preço">
+
+<select id="cat"></select>
+
+<textarea id="desc" placeholder="Descrição"></textarea>
+
+<input id="sizes" placeholder="Tamanhos: P,M,G,GG">
+
+<input id="files" type="file" accept="image/*" multiple>
+
+<div id="thumbs" class="thumbs"></div>
+
+<button class="btn red" onclick="save()">Salvar produto</button>
+
+<button id="cancel" class="btn" onclick="reset()" style="display:none">
+Cancelar
+</button>
+
+</div>
+</div>
+
+
+<div class="box">
+
+<h2>Produtos</h2>
+
+<div id="list" class="grid"></div>
+
+</div>
+
+</div>
+</div>
+
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+<script src="config.js"></script>
+
+<script>
+
+/* SUPABASE */
+const db = supabase.createClient(
+    SUPABASE_URL,
+    SUPABASE_ANON_KEY
+);
+
+let cats = [];
+let products = [];
+let edit = null;
+let old = [];
+
+
+/* LOGIN AUTOMÁTICO */
+async function boot(){
+
+    const result = await db.auth.getSession();
+
+    const session = result.data.session;
+
+    if(session){
+        show();
+    }
+}
+
+
+/* MOSTRAR PAINEL */
+function show(){
+
+    document.getElementById("login").classList.add("hidden");
+
+    document.getElementById("app").classList.remove("hidden");
+
+    load();
+}
+
+
+/* LOGIN */
+async function doLogin(){
+
+    const emailValue = document.getElementById("email").value;
+
+    const passwordValue = document.getElementById("password").value;
+
+    const msgElement = document.getElementById("msg");
+
+    msgElement.textContent = "Entrando...";
+
+    const result = await db.auth.signInWithPassword({
+        email: emailValue,
+        password: passwordValue
+    });
+
+    if(result.error){
+
+        msgElement.textContent = result.error.message;
+
+        return;
+    }
+
+    msgElement.textContent = "";
+
+    show();
+}
+
+
+/* LOGOUT */
+async function logout(){
+
+    await db.auth.signOut();
+
+    location.reload();
+}
+
+
+/* CARREGAR PRODUTOS */
+async function load(){
+
+    const categoriesResult = await db
+        .from("categories")
+        .select("*")
+        .order("sort_order");
+
+    cats = categoriesResult.data || [];
+
+
+    const productsResult = await db
+        .from("products")
+        .select("*")
+        .order("created_at",{ascending:false});
+
+    products = productsResult.data || [];
+
+
+    document.getElementById("cat").innerHTML =
+        cats.map(c =>
+            '<option value="'+c.id+'">'+esc(c.name)+'</option>'
+        ).join("");
+
+
+    document.getElementById("catlist").innerHTML =
+        cats.map(c =>
+            '<span style="display:inline-block;padding:7px;background:#eee;margin:3px;border-radius:6px">'+
+            esc(c.name)+
+            '</span>'
+        ).join("");
+
+
+    document.getElementById("list").innerHTML =
+        products.map(p =>
+            '<div class="prod">'+
+
+            '<img src="'+
+            esc((p.images || [])[0] || '')+
+            '">'+
+
+            '<div class="pi">'+
+
+            '<b>'+
+            esc(p.name)+
+            '</b><br>'+
+
+            esc(p.price || '')+
+
+            '<div class="actions">'+
+
+            '<button class="btn" onclick="editP(\''+
+            p.id+
+            '\')">Editar</button>'+
+
+            '<button class="btn black" onclick="del(\''+
+            p.id+
+            '\')">Excluir</button>'+
+
+            '</div>'+
+
+            '</div>'+
+
+            '</div>'
+        ).join("") ||
+
+        "<p>Nenhum produto.</p>";
+}
+
+
+/* ADICIONAR CATEGORIA */
+async function addCat(){
+
+    const categoryName =
+        document.getElementById("cn").value.trim();
+
+    if(!categoryName) return;
+
+
+    await db
+        .from("categories")
+        .insert({
+            name:categoryName,
+            sort_order:cats.length+1
+        });
+
+
+    document.getElementById("cn").value = "";
+
+    load();
+}
+
+
+/* SALVAR PRODUTO */
+async function save(){
+
+    const nameElement =
+        document.getElementById("name");
+
+    const priceElement =
+        document.getElementById("price");
+
+    const catElement =
+        document.getElementById("cat");
+
+    const descElement =
+        document.getElementById("desc");
+
+    const sizesElement =
+        document.getElementById("sizes");
+
+    const filesElement =
+        document.getElementById("files");
+
+
+    if(
+        !nameElement.value.trim() ||
+        !catElement.value
+    ){
+
+        alert("Preencha nome e categoria.");
+
+        return;
+    }
+
+
+    let imgs = [...old];
+
+
+    for(let f of filesElement.files){
+
+        const path =
+            Date.now()+
+            "-"+
+            Math.random().toString(36).slice(2)+
+            "-"+
+            f.name;
+
+
+        const upload =
+            await db
+            .storage
+            .from("product-images")
+            .upload(path,f);
+
+
+        if(upload.error){
+
+            alert(upload.error.message);
+
+            return;
+        }
+
+
+        const publicUrl =
+            db
+            .storage
+            .from("product-images")
+            .getPublicUrl(path)
+            .data
+            .publicUrl;
+
+
+        imgs.push(publicUrl);
+    }
+
+
+    const obj = {
+
+        name:nameElement.value.trim(),
+
+        price:priceElement.value.trim(),
+
+        category_id:catElement.value,
+
+        description:descElement.value.trim(),
+
+        sizes:sizesElement.value
+            .split(",")
+            .map(x=>x.trim())
+            .filter(Boolean),
+
+        images:imgs,
+
+        active:true
+    };
+
+
+    if(edit){
+
+        await db
+            .from("products")
+            .update(obj)
+            .eq("id",edit);
+
+    }else{
+
+        await db
+            .from("products")
+            .insert(obj);
+    }
+
+
+    reset();
+
+    load();
+}
+
+
+/* EDITAR PRODUTO */
+function editP(id){
+
+    const p =
+        products.find(x=>x.id===id);
+
+    if(!p) return;
+
+
+    edit = id;
+
+    old = [...(p.images || [])];
+
+
+    document.getElementById("name").value =
+        p.name || "";
+
+    document.getElementById("price").value =
+        p.price || "";
+
+    document.getElementById("cat").value =
+        p.category_id || "";
+
+    document.getElementById("desc").value =
+        p.description || "";
+
+    document.getElementById("sizes").value =
+        (p.sizes || []).join(",");
+
+
+    document.getElementById("title").textContent =
+        "Editar produto";
+
+    document.getElementById("cancel").style.display =
+        "inline-block";
+
+
+    showThumbs();
+}
+
+
+/* EXCLUIR */
+async function del(id){
+
+    if(!confirm("Excluir produto?")) return;
+
+
+    await db
+        .from("products")
+        .delete()
+        .eq("id",id);
+
+
+    load();
+}
+
+
+/* MOSTRAR IMAGENS */
+function showThumbs(){
+
+    document.getElementById("thumbs").innerHTML =
+
+        old.map((x,i) =>
+
+            '<div class="thumb">'+
+
+            '<img src="'+esc(x)+'">'+
+
+            '<button onclick="old.splice('+i+',1);showThumbs()">×</button>'+
+
+            '</div>'
+
+        ).join("");
+}
+
+
+/* SELEÇÃO DE IMAGENS */
+document.getElementById("files").onchange = function(){
+
+    const filesList = [...this.files];
+
+
+    document.getElementById("thumbs").innerHTML =
+
+        filesList.map(f =>
+
+            '<div class="thumb">'+
+
+            '<img src="'+URL.createObjectURL(f)+'">'+
+
+            '</div>'
+
+        ).join("")+
+
+        old.map(x =>
+
+            '<div class="thumb">'+
+
+            '<img src="'+esc(x)+'">'+
+
+            '</div>'
+
+        ).join("");
+};
+
+
+/* RESET */
+function reset(){
+
+    edit = null;
+
+    old = [];
+
+
+    document.getElementById("name").value = "";
+
+    document.getElementById("price").value = "";
+
+    document.getElementById("desc").value = "";
+
+    document.getElementById("sizes").value = "";
+
+    document.getElementById("files").value = "";
+
+
+    document.getElementById("title").textContent =
+        "Adicionar produto";
+
+
+    document.getElementById("cancel").style.display =
+        "none";
+
+
+    document.getElementById("thumbs").innerHTML = "";
+}
+
+
+/* ESCAPE */
+function esc(s){
+
+    return String(s || "")
+        .replace(
+            /[&<>"']/g,
+            m => ({
+                "&":"&amp;",
+                "<":"&lt;",
+                ">":"&gt;",
+                '"':"&quot;",
+                "'":"&#039;"
+            }[m])
+        );
+}
+
+
+/* INICIAR */
+boot();
+
+</script>
+
+</body>
+</html>
