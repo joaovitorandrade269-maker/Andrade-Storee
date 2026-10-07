@@ -1,10 +1,706 @@
-<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Andrade Store</title><style>
-*{box-sizing:border-box}body{margin:0;font-family:Arial;background:#f7f7f7;color:#111}header{background:#080808;color:#fff;padding:20px 5%;display:flex;justify-content:space-between;align-items:center}.logo{font-weight:900;font-size:24px}.logo b{color:#e11}.panel{max-width:1200px;margin:auto;padding:40px 5%}.hero{background:#080808;color:#fff;padding:70px 5%}.hero h1{font-size:clamp(45px,8vw,90px);margin:10px 0}.red{background:#e11;color:#fff}.btn{display:inline-block;padding:13px 18px;border-radius:8px;text-decoration:none;font-weight:800;border:0}.cat{margin-bottom:55px}.cathead{display:flex;justify-content:space-between;border-bottom:1px solid #ddd;margin-bottom:18px}.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:18px}.card{background:#fff;border:1px solid #ddd;border-radius:12px;overflow:hidden}.photo{aspect-ratio:4/5;background:#eee;overflow:hidden}.photo img{width:100%;height:100%;object-fit:cover}.info{padding:14px}.price{font-weight:900;margin-top:8px}.modal{position:fixed;inset:0;background:#0009;display:none;align-items:center;justify-content:center;padding:18px}.modal.show{display:flex}.box{background:#fff;max-width:850px;width:100%;max-height:92vh;overflow:auto;border-radius:14px;position:relative}.close{position:absolute;right:10px;top:10px;z-index:3;border:0;border-radius:50%;font-size:24px;width:38px;height:38px}.mg{display:grid;grid-template-columns:1fr 1fr}.gallery{display:flex;overflow-x:auto;scroll-snap-type:x mandatory;scrollbar-width:none;background:#eee}.gallery img{min-width:100%;aspect-ratio:4/5;object-fit:cover;scroll-snap-align:start}.details{padding:35px}@media(max-width:700px){.mg{grid-template-columns:1fr}}</style></head><body>
-<header><div class="logo">ANDRADE<b>.</b>STORE</div><a class="btn red" href="admin.html">PAINEL</a></header><section class="hero"><div class="panel"><h1>SEU ESTILO.<br>SUA PRESENÇA.</h1><p>Moda masculina & streetwear.</p></div></section><main class="panel" id="catalogo"></main>
-<div class="modal" id="modal"><div class="box"><button class="close" onclick="closeM()">×</button><div class="mg"><div class="gallery" id="gallery"></div><div class="details"><small>ANDRADE STORE</small><h2 id="mn"></h2><h3 id="mp"></h3><p id="md"></p><div id="ms"></div><a id="wa" class="btn red">Tirar dúvida pelo WhatsApp</a></div></div></div></div>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script src="config.js"></script><script>
-const db=supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY);let ps=[];
-async function load(){let c=(await db.from('categories').select('*').eq('active',true).order('sort_order')).data||[],p=(await db.from('products').select('*').eq('active',true).order('created_at',{ascending:false})).data||[];ps=p;document.getElementById('catalogo').innerHTML=c.map(x=>{let a=p.filter(y=>y.category_id===x.id);if(!a.length)return '';return '<section class="cat"><div class="cathead"><h2>'+esc(x.name)+'</h2></div><div class="grid">'+a.map((q,i)=>'<article class="card" onclick="openM(\''+q.id+'\')"><div class="photo"><img src="'+esc((q.images||[])[0]||'')+'"></div><div class="info"><b>'+esc(q.name)+'</b><div class="price">'+esc(q.price||'Consulte o valor')+'</div></div></article>').join('')+'</div></section>'}).join('')||'<p>Nenhum produto cadastrado.</p>'}
-function openM(id){let p=ps.find(x=>x.id===id);gallery.innerHTML=(p.images||[]).map(x=>'<img src="'+esc(x)+'">').join('');mn.textContent=p.name;mp.textContent=p.price||'Consulte o valor';md.textContent=p.description||'';ms.innerHTML=(p.sizes||[]).map(x=>'<span style="display:inline-block;padding:8px;border:1px solid #ccc;margin:3px">'+esc(x)+'</span>').join('');wa.href='https://wa.me/'+WHATSAPP+'?text='+encodeURIComponent('Olá! Tenho interesse em '+p.name);modal.classList.add('show')}
-function closeM(){modal.classList.remove('show')}function esc(s){return String(s||'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]))}load();
-</script></body></html>
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Andrade Store</title>
+
+<style>
+*{box-sizing:border-box}
+
+body{
+  margin:0;
+  font-family:Arial,sans-serif;
+  background:#f7f7f7;
+  color:#111
+}
+
+header{
+  background:#080808;
+  color:#fff;
+  padding:20px 5%;
+  display:flex;
+  justify-content:space-between;
+  align-items:center
+}
+
+.logo{
+  font-weight:900;
+  font-size:24px
+}
+
+.logo b{
+  color:#e11
+}
+
+.panel{
+  max-width:1200px;
+  margin:auto;
+  padding:40px 5%
+}
+
+.hero{
+  background:#080808;
+  color:#fff;
+  padding:70px 5%
+}
+
+.hero h1{
+  font-size:clamp(45px,8vw,90px);
+  margin:10px 0
+}
+
+.red{
+  background:#e11;
+  color:#fff
+}
+
+.btn{
+  display:inline-block;
+  padding:13px 18px;
+  border-radius:8px;
+  text-decoration:none;
+  font-weight:800;
+  border:0;
+  cursor:pointer
+}
+
+.cat{
+  margin-bottom:55px
+}
+
+.cathead{
+  display:flex;
+  justify-content:space-between;
+  border-bottom:1px solid #ddd;
+  margin-bottom:18px
+}
+
+.grid{
+  display:grid;
+  grid-template-columns:repeat(auto-fill,minmax(210px,1fr));
+  gap:18px
+}
+
+.card{
+  background:#fff;
+  border:1px solid #ddd;
+  border-radius:12px;
+  overflow:hidden;
+  cursor:pointer;
+  transition:.2s
+}
+
+.card:active{
+  transform:scale(.98)
+}
+
+/* FOTO DO PRODUTO */
+.photo{
+  aspect-ratio:4/5;
+  background:#eee;
+  overflow:hidden;
+  position:relative
+}
+
+.photo img{
+  width:100%;
+  height:100%;
+  object-fit:cover
+}
+
+/* INDICADOR DE QUANTIDADE DE FOTOS */
+.photo-count{
+  position:absolute;
+  right:10px;
+  top:10px;
+  background:#000b;
+  color:#fff;
+  padding:6px 9px;
+  border-radius:20px;
+  font-size:12px;
+  font-weight:bold
+}
+
+.info{
+  padding:14px
+}
+
+.price{
+  font-weight:900;
+  margin-top:8px
+}
+
+/* MODAL */
+.modal{
+  position:fixed;
+  inset:0;
+  background:#0009;
+  display:none;
+  align-items:center;
+  justify-content:center;
+  padding:18px;
+  z-index:100
+}
+
+.modal.show{
+  display:flex
+}
+
+.box{
+  background:#fff;
+  max-width:850px;
+  width:100%;
+  max-height:92vh;
+  overflow:auto;
+  border-radius:14px;
+  position:relative
+}
+
+.close{
+  position:absolute;
+  right:10px;
+  top:10px;
+  z-index:20;
+  border:0;
+  border-radius:50%;
+  font-size:24px;
+  width:38px;
+  height:38px;
+  cursor:pointer;
+  background:#fff;
+  box-shadow:0 2px 10px #0003
+}
+
+.mg{
+  display:grid;
+  grid-template-columns:1fr 1fr
+}
+
+/* GALERIA DESLIZÁVEL */
+.gallery-wrap{
+  position:relative;
+  background:#eee;
+  overflow:hidden
+}
+
+.gallery{
+  display:flex;
+  width:100%;
+  overflow-x:auto;
+  scroll-snap-type:x mandatory;
+  scrollbar-width:none;
+  -webkit-overflow-scrolling:touch
+}
+
+.gallery::-webkit-scrollbar{
+  display:none
+}
+
+.gallery img{
+  flex:0 0 100%;
+  width:100%;
+  aspect-ratio:4/5;
+  object-fit:cover;
+  scroll-snap-align:start;
+  user-select:none;
+  -webkit-user-drag:none
+}
+
+/* SETAS */
+.gbtn{
+  position:absolute;
+  top:50%;
+  transform:translateY(-50%);
+  width:42px;
+  height:42px;
+  border:0;
+  border-radius:50%;
+  background:#000b;
+  color:#fff;
+  font-size:25px;
+  cursor:pointer;
+  z-index:5
+}
+
+.gprev{
+  left:10px
+}
+
+.gnext{
+  right:10px
+}
+
+/* BOLINHAS */
+.dots{
+  position:absolute;
+  bottom:12px;
+  left:0;
+  right:0;
+  display:flex;
+  justify-content:center;
+  gap:6px;
+  z-index:5
+}
+
+.dot{
+  width:8px;
+  height:8px;
+  border-radius:50%;
+  background:#fff9;
+  border:1px solid #0006
+}
+
+.dot.active{
+  background:#e11;
+  transform:scale(1.25)
+}
+
+.details{
+  padding:35px
+}
+
+@media(max-width:700px){
+
+  header{
+    padding:16px 5%
+  }
+
+  .logo{
+    font-size:20px
+  }
+
+  .hero{
+    padding:50px 5%
+  }
+
+  .hero h1{
+    font-size:48px
+  }
+
+  .grid{
+    grid-template-columns:repeat(2,1fr);
+    gap:10px
+  }
+
+  .card{
+    border-radius:10px
+  }
+
+  .info{
+    padding:10px
+  }
+
+  .mg{
+    grid-template-columns:1fr
+  }
+
+  .details{
+    padding:25px
+  }
+
+  .box{
+    max-height:95vh
+  }
+}
+</style>
+</head>
+
+<body>
+
+<header>
+  <div class="logo">ANDRADE<b>.</b>STORE</div>
+  <a class="btn red" href="admin.html">PAINEL</a>
+</header>
+
+<section class="hero">
+  <div class="panel">
+    <h1>SEU ESTILO.<br>SUA PRESENÇA.</h1>
+    <p>Moda masculina & streetwear.</p>
+  </div>
+</section>
+
+<main class="panel" id="catalogo"></main>
+
+<!-- MODAL DO PRODUTO -->
+<div class="modal" id="modal">
+
+  <div class="box">
+
+    <button class="close" onclick="closeM()">×</button>
+
+    <div class="mg">
+
+      <div class="gallery-wrap">
+
+        <div class="gallery" id="gallery"></div>
+
+        <button class="gbtn gprev" onclick="prevPhoto()">‹</button>
+        <button class="gbtn gnext" onclick="nextPhoto()">›</button>
+
+        <div class="dots" id="dots"></div>
+
+      </div>
+
+      <div class="details">
+
+        <small>ANDRADE STORE</small>
+
+        <h2 id="mn"></h2>
+
+        <h3 id="mp"></h3>
+
+        <p id="md"></p>
+
+        <div id="ms"></div>
+
+        <br>
+
+        <a id="wa" class="btn red">
+          Tirar dúvida pelo WhatsApp
+        </a>
+
+      </div>
+
+    </div>
+
+  </div>
+
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="config.js"></script>
+
+<script>
+
+const db=supabase.createClient(
+  SUPABASE_URL,
+  SUPABASE_ANON_KEY
+);
+
+let ps=[];
+let currentPhotos=[];
+let currentPhoto=0;
+
+
+/* CARREGAR PRODUTOS */
+async function load(){
+
+  let c=(
+    await db
+      .from('categories')
+      .select('*')
+      .eq('active',true)
+      .order('sort_order')
+  ).data||[];
+
+  let p=(
+    await db
+      .from('products')
+      .select('*')
+      .eq('active',true)
+      .order('created_at',{ascending:false})
+  ).data||[];
+
+  ps=p;
+
+  document.getElementById('catalogo').innerHTML=
+
+  c.map(x=>{
+
+    let a=p.filter(y=>y.category_id===x.id);
+
+    if(!a.length)return '';
+
+    return `
+
+    <section class="cat">
+
+      <div class="cathead">
+        <h2>${esc(x.name)}</h2>
+      </div>
+
+      <div class="grid">
+
+        ${a.map(q=>{
+
+          let imgs=q.images||[];
+
+          return `
+
+          <article
+            class="card"
+            onclick="openM('${q.id}')"
+          >
+
+            <div class="photo">
+
+              <img
+                src="${esc(imgs[0]||'')}"
+                loading="lazy"
+              >
+
+              ${
+                imgs.length>1
+                ? `<span class="photo-count">📷 ${imgs.length}</span>`
+                : ''
+              }
+
+            </div>
+
+            <div class="info">
+
+              <b>${esc(q.name)}</b>
+
+              <div class="price">
+                ${esc(q.price||'Consulte o valor')}
+              </div>
+
+            </div>
+
+          </article>
+
+          `
+
+        }).join('')}
+
+      </div>
+
+    </section>
+
+    `
+
+  }).join('')||'<p>Nenhum produto cadastrado.</p>';
+}
+
+
+/* ABRIR PRODUTO */
+function openM(id){
+
+  let p=ps.find(x=>x.id===id);
+
+  if(!p)return;
+
+  currentPhotos=p.images||[];
+  currentPhoto=0;
+
+  renderGallery();
+
+  document.getElementById('mn').textContent=p.name;
+
+  document.getElementById('mp').textContent=
+    p.price||'Consulte o valor';
+
+  document.getElementById('md').textContent=
+    p.description||'';
+
+  document.getElementById('ms').innerHTML=
+    (p.sizes||[])
+      .map(x=>
+        '<span style="display:inline-block;padding:8px;border:1px solid #ccc;margin:3px">'+
+        esc(x)+
+        '</span>'
+      )
+      .join('');
+
+  document.getElementById('wa').href=
+    'https://wa.me/'+
+    WHATSAPP+
+    '?text='+
+    encodeURIComponent(
+      'Olá! Tenho interesse em '+p.name
+    );
+
+  document.getElementById('modal')
+    .classList.add('show');
+}
+
+
+/* GALERIA */
+function renderGallery(){
+
+  const gallery=document.getElementById('gallery');
+  const dots=document.getElementById('dots');
+
+  gallery.innerHTML=currentPhotos
+    .map(x=>
+      `<img src="${esc(x)}" draggable="false">`
+    )
+    .join('');
+
+  dots.innerHTML=currentPhotos
+    .map((x,i)=>
+      `<span class="dot ${i===0?'active':''}"></span>`
+    )
+    .join('');
+
+  updateButtons();
+
+  gallery.onscroll=()=>{
+
+    const index=Math.round(
+      gallery.scrollLeft/gallery.clientWidth
+    );
+
+    if(index!==currentPhoto){
+
+      currentPhoto=index;
+
+      document
+        .querySelectorAll('.dot')
+        .forEach((dot,i)=>{
+          dot.classList.toggle(
+            'active',
+            i===currentPhoto
+          );
+        });
+
+    }
+
+    updateButtons();
+  };
+}
+
+
+/* ATUALIZAR SETAS */
+function updateButtons(){
+
+  const prev=document.querySelector('.gprev');
+  const next=document.querySelector('.gnext');
+
+  if(!prev||!next)return;
+
+  if(currentPhotos.length<=1){
+
+    prev.style.display='none';
+    next.style.display='none';
+
+  }else{
+
+    prev.style.display='block';
+    next.style.display='block';
+
+  }
+}
+
+
+/* PRÓXIMA FOTO */
+function nextPhoto(){
+
+  if(!currentPhotos.length)return;
+
+  currentPhoto++;
+
+  if(currentPhoto>=currentPhotos.length){
+    currentPhoto=0;
+  }
+
+  goToPhoto();
+}
+
+
+/* FOTO ANTERIOR */
+function prevPhoto(){
+
+  if(!currentPhotos.length)return;
+
+  currentPhoto--;
+
+  if(currentPhoto<0){
+    currentPhoto=currentPhotos.length-1;
+  }
+
+  goToPhoto();
+}
+
+
+/* IR PARA FOTO */
+function goToPhoto(){
+
+  const gallery=document.getElementById('gallery');
+
+  gallery.scrollTo({
+    left:currentPhoto*gallery.clientWidth,
+    behavior:'smooth'
+  });
+
+  document
+    .querySelectorAll('.dot')
+    .forEach((dot,i)=>{
+      dot.classList.toggle(
+        'active',
+        i===currentPhoto
+      );
+    });
+}
+
+
+/* FECHAR */
+function closeM(){
+
+  document
+    .getElementById('modal')
+    .classList.remove('show');
+
+}
+
+
+/* FECHAR CLICANDO FORA */
+document.getElementById('modal').addEventListener(
+  'click',
+  function(e){
+
+    if(e.target===this){
+      closeM();
+    }
+
+  }
+);
+
+
+/* ESC */
+document.addEventListener(
+  'keydown',
+  function(e){
+
+    if(e.key==='Escape'){
+      closeM();
+    }
+
+    if(e.key==='ArrowRight'){
+      nextPhoto();
+    }
+
+    if(e.key==='ArrowLeft'){
+      prevPhoto();
+    }
+
+  }
+);
+
+
+/* SEGURANÇA HTML */
+function esc(s){
+
+  return String(s||'')
+    .replace(
+      /[&<>"']/g,
+      m=>({
+        '&':'&amp;',
+        '<':'&lt;',
+        '>':'&gt;',
+        '"':'&quot;',
+        "'":'&#039;'
+      }[m])
+    );
+
+}
+
+
+/* INICIAR */
+load();
+
+</script>
+
+</body>
+</html>
